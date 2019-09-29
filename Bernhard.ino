@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include "Adafruit_VS1053.h"
+#include "Types.h"
 
 // These are the pins used
 #define VS1053_RESET   -1     // VS1053 reset pin (not used!)
@@ -111,20 +112,36 @@ void setup()
   Serial.println(F("Playing track 002"));
   musicPlayer.startPlayingFile("/track002.mp3");  
 }
+
+uint32 timerFactor = 1;
+uint32 sleepyInterval = 5000 * timerFactor;
+
+uint32 previousMillis = 0;
  
 // the loop function runs over and over again forever
 void loop() 
 {
-  digitalWrite(13, HIGH);   
+  /*digitalWrite(13, HIGH);   
   delay(100);               
   digitalWrite(13, LOW);    
   delay(100);
   digitalWrite(13, HIGH);   
   delay(100);               
   digitalWrite(13, LOW);
-  delay(1000);    
+  delay(1000);  
+  */
+  if(millis() - previousMillis > sleepyInterval)
+  {
+    Serial.print("g0");
+    previousMillis = millis();
+    musicPlayer.startPlayingFile("/track002.mp3");
+  }
+  else
+  {
+    Serial.print(millis() - previousMillis);
+  }
 
-  Serial.print(".");
+  /*Serial.print(".");
   // File is playing in the background
   if (musicPlayer.stopped()) {
     Serial.println("Done playing music");
@@ -151,7 +168,8 @@ void loop()
       }
     }
   }
-  delay(100);           
+  delay(100);
+  */           
 }
 
 void printDirectory(File dir, int numTabs) 
