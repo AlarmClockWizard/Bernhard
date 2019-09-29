@@ -152,7 +152,7 @@ void loop()
     filePlayer.startPlayingFile("/sorrow.mp3");    
   }
 
-  if(event.orientation.y > 100)
+  if(event.orientation.y > 50)
   {
     Serial.print("hit");
     filePlayer.startPlayingFile("/hit.mp3");    
