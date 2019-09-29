@@ -1,12 +1,19 @@
 //https://learn.adafruit.com/adafruit-feather-m4-express-atsamd51
 //https://learn.adafruit.com/adafruit-music-maker-featherwing
-
+//https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/arduino-code
 
 // include SPI, MP3 and SD libraries
 #include <SPI.h>
 #include <SD.h>
 #include "Adafruit_VS1053.h"
+
+#include <Wire.h>
+#include <Adafruit_Sensor.h> // Adafruit Unified Sensors
+#include <Adafruit_BNO055.h> // Adafruit_BNO055
+#include <utility/imumaths.h>
+  
 #include "Types.h"
+
 
 // Define pins for Adafruit_VS1053 Musik Maker (Feather M4)
 #define Adafruit_VS1053_RESET   -1     // VS1053 reset pin (not used!)
@@ -20,11 +27,13 @@ uint32 sleepyInterval = 5 * timerFactor;
 uint32 previousMillis = 0;
 
 Adafruit_VS1053_FilePlayer filePlayer = Adafruit_VS1053_FilePlayer(Adafruit_VS1053_RESET, Adafruit_VS1053_CS, Adafruit_VS1053_DCS, Adafruit_VS1053_DREQ, Adafruit_CARDCS);
+Adafruit_BNO055 bno055 = Adafruit_BNO055(55);
 
 // the setup function runs once when you press reset or power the board
 void setup() 
 {
-  setupMusikMaker();  
+  setupMusikMaker(); 
+  setupBNO055(); 
 }
 
 void setupMusikMaker()
@@ -76,6 +85,22 @@ void setupMusikMaker()
   filePlayer.startPlayingFile("/track002.mp3");  
 }
 
+void setupBNO055() 
+{
+  Serial.println("Orientation Sensor Test"); Serial.println("");
+  
+  /* Initialise the sensor */
+  if(!bno055.begin())
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
+  
+  delay(1000);    
+  bno055.setExtCrystalUse(true);
+}
+
 // the loop function runs over and over again forever
 void loop() 
 {
@@ -89,7 +114,7 @@ void loop()
   digitalWrite(13, LOW);
   delay(1000);  
   */
-  if(millis() - previousMillis > sleepyInterval)
+  /*if(millis() - previousMillis > sleepyInterval)
   {
     filePlayer.startPlayingFile("/owling.mp3");
     delay(10000);
@@ -106,7 +131,34 @@ void loop()
     filePlayer.startPlayingFile("/sorrow.mp3");
     delay(10000);
     previousMillis = millis();
+  }*/
+
+  /* Get a new sensor event */ 
+  sensors_event_t event; 
+  bno055.getEvent(&event);
+  
+  /* Display the floating point data */
+  Serial.print("X: ");
+  Serial.print(event.orientation.x, 4);
+  Serial.print("\tY: ");
+  Serial.print(event.orientation.y, 4);
+  Serial.print("\tZ: ");
+  Serial.print(event.orientation.z, 4);
+  Serial.println("");
+
+  if(event.orientation.x > 200)
+  {
+    Serial.print("sorrow");
+    filePlayer.startPlayingFile("/sorrow.mp3");    
   }
+
+  if(event.orientation.y > 100)
+  {
+    Serial.print("hit");
+    filePlayer.startPlayingFile("/hit.mp3");    
+  }
+  
+  delay(100);
 
 
   /*Serial.print(".");
