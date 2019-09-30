@@ -22,9 +22,15 @@
 #define Adafruit_CARDCS          5     // Card chip select pin
 #define Adafruit_VS1053_DREQ     9     // VS1053 Data request, ideally an Interrupt pin   // DREQ should be an Int pin *if possible* (not possible on 32u4)
 
+//settings
 uint32 timerFactor = 100;
 uint32 sleepyInterval = 5 * timerFactor;
 uint32 previousMillis = 0;
+uint32 idleSoundIntervall = 5 * timerFactor;
+
+//status
+uint32 timeOfLastIdleSound = millis();
+bool wasHangingDown = false;
 
 Adafruit_VS1053_FilePlayer filePlayer = Adafruit_VS1053_FilePlayer(Adafruit_VS1053_RESET, Adafruit_VS1053_CS, Adafruit_VS1053_DCS, Adafruit_VS1053_DREQ, Adafruit_CARDCS);
 Adafruit_BNO055 bno055 = Adafruit_BNO055(55);
@@ -101,43 +107,79 @@ void setupBNO055()
   bno055.setExtCrystalUse(true);
 }
 
+bool isHangingDown()
+{
+  sensors_event_t event; 
+  bno055.getEvent(&event);
+
+  if(event.orientation.x > 200)
+  {
+    return true;   
+  }
+  return false;
+}
+
+bool playIdleSound()
+{
+  if(millis() - timeOfLastIdleSound > idleSoundIntervall)
+  {
+    if(wasHangingDown)
+    {
+      int32 randomIndex = random(0, 1);
+      if(randomIndex == 0)
+      {
+        filePlayer.startPlayingFile("/wakeup.mp3");
+      }
+      if(randomIndex == 1)
+      {
+        filePlayer.startPlayingFile("/owling.mp3");
+      }
+    }
+    else
+    {
+      int32 randomIndex = random(0, 1);
+      if(randomIndex == 0)
+      {
+        filePlayer.startPlayingFile("/sorrow.mp3");
+      }
+      if(randomIndex == 1)
+      {
+        filePlayer.startPlayingFile("/vomit.mp3");
+      }
+    }
+  }
+}
+
 // the loop function runs over and over again forever
 void loop() 
 {
-  Serial.println(F("Loop"));
-  /*digitalWrite(13, HIGH);   
-  delay(100);               
-  digitalWrite(13, LOW);    
-  delay(100);
-  digitalWrite(13, HIGH);   
-  delay(100);               
-  digitalWrite(13, LOW);
-  delay(1000);  
-  */
-  /*if(millis() - previousMillis > sleepyInterval)
+  if(isHangingDown())
   {
-    filePlayer.startPlayingFile("/owling.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/hit.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/vomit.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/sick.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/snore.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/vomit.mp3");
-    delay(10000);
-    filePlayer.startPlayingFile("/sorrow.mp3");
-    delay(10000);
-    previousMillis = millis();
-  }*/
-
-  /* Get a new sensor event */ 
+    if(wasHangingDown == false)
+    {
+      filePlayer.startPlayingFile("/hit.mp3");   
+      filePlayer.startPlayingFile("/shreek.mp3");  
+      wasHangingDown = true;
+      timeOfLastIdleSound = millis(); 
+    }
+  }
+  else
+  {
+    if(wasHangingDown == true)
+    {
+      Serial.println(F("we are upright again"));
+      filePlayer.startPlayingFile("/wakeup.mp3");
+      wasHangingDown = false;
+      timeOfLastIdleSound = millis(); 
+    }
+  }
+  playIdleSound();
+    
+ /* Get a new sensor event 
   sensors_event_t event; 
   bno055.getEvent(&event);
   
-  /* Display the floating point data */
+  /* Display the floating point data 
   Serial.print("X: ");
   Serial.print(event.orientation.x, 4);
   Serial.print("\tY: ");
@@ -157,8 +199,8 @@ void loop()
     Serial.print("hit");
     filePlayer.startPlayingFile("/hit.mp3");    
   }
-  
-  delay(100);
+  */
+  //delay(100);
 
 
   /*Serial.print(".");
