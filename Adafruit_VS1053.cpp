@@ -214,6 +214,7 @@ unsigned long Adafruit_VS1053_FilePlayer::mp3_ID3Jumper(File mp3) {
 
 
 boolean Adafruit_VS1053_FilePlayer::startPlayingFile(const char *trackname) {
+  Serial.println(F(trackname));
   // reset playback
   sciWrite(VS1053_REG_MODE, VS1053_MODE_SM_LINE1 | VS1053_MODE_SM_SDINEW);
   // resync

@@ -24,13 +24,15 @@
 
 //settings
 uint32 timerFactor = 100;
-uint32 sleepyInterval = 5 * timerFactor;
-uint32 previousMillis = 0;
-uint32 idleSoundIntervall = 5 * timerFactor;
+//uint32 sleepyInterval = 5 * timerFactor;
+//uint32 previousMillis = 0;
+uint32 idleSoundBaseIntervall = 50 * timerFactor;
+uint32 idleSoundRandomIntervall = 100  * timerFactor;
 
-//status
 uint32 timeOfLastIdleSound = millis();
 bool wasHangingDown = false;
+
+
 
 Adafruit_VS1053_FilePlayer filePlayer = Adafruit_VS1053_FilePlayer(Adafruit_VS1053_RESET, Adafruit_VS1053_CS, Adafruit_VS1053_DCS, Adafruit_VS1053_DREQ, Adafruit_CARDCS);
 Adafruit_BNO055 bno055 = Adafruit_BNO055(55);
@@ -123,30 +125,41 @@ bool playIdleSound()
 {
   if(millis() - timeOfLastIdleSound > idleSoundIntervall)
   {
-    if(wasHangingDown)
+    Serial.println(F("time to idle"));
+    if(isHangingDown())
     {
-      int32 randomIndex = random(0, 1);
+      int32 randomIndex = random(0, 2);
       if(randomIndex == 0)
       {
-        filePlayer.startPlayingFile("/wakeup.mp3");
+        filePlayer.playFullFile("/wakeup.mp3");
       }
       if(randomIndex == 1)
       {
-        filePlayer.startPlayingFile("/owling.mp3");
+        filePlayer.playFullFile("/owling.mp3");
+      }
+      if(randomIndex == 2)
+      {
+        filePlayer.playFullFile("/snore.mp3");
       }
     }
     else
     {
-      int32 randomIndex = random(0, 1);
+      int32 randomIndex = random(0, 2);
       if(randomIndex == 0)
       {
-        filePlayer.startPlayingFile("/sorrow.mp3");
+        filePlayer.playFullFile("/sorrow.mp3");
       }
       if(randomIndex == 1)
       {
-        filePlayer.startPlayingFile("/vomit.mp3");
+        filePlayer.playFullFile("/vomit.mp3");
+      }
+      if(randomIndex == 2)
+      {
+        filePlayer.playFullFile("/snore.mp3");
       }
     }
+    idleSoundIntervall = idleSooundBaseIntervall + random(0, idleSoundRandomIntervall)
+    timeOfLastIdleSound = millis();
   }
 }
 
@@ -157,9 +170,9 @@ void loop()
   {
     if(wasHangingDown == false)
     {
-      filePlayer.startPlayingFile("/hit.mp3");   
-      filePlayer.startPlayingFile("/shreek.mp3");  
-      wasHangingDown = true;
+      Serial.println(F("dumb bird down"));
+      filePlayer.playFullFile("/hit.mp3");   
+      filePlayer.playFullFile("/shreek.mp3");  
       timeOfLastIdleSound = millis(); 
     }
   }
@@ -168,18 +181,18 @@ void loop()
     if(wasHangingDown == true)
     {
       Serial.println(F("we are upright again"));
-      filePlayer.startPlayingFile("/wakeup.mp3");
-      wasHangingDown = false;
+      filePlayer.playFullFile("/wakeup.mp3");
       timeOfLastIdleSound = millis(); 
     }
   }
+  wasHangingDown = isHangingDown();
   playIdleSound();
     
  /* Get a new sensor event 
   sensors_event_t event; 
-  bno055.getEvent(&event);
+  bno055.getEvent(&event);*/
   
-  /* Display the floating point data 
+  // Display the floating point data 
   Serial.print("X: ");
   Serial.print(event.orientation.x, 4);
   Serial.print("\tY: ");
@@ -187,7 +200,7 @@ void loop()
   Serial.print("\tZ: ");
   Serial.print(event.orientation.z, 4);
   Serial.println("");
-
+/*
   if(event.orientation.x > 200)
   {
     Serial.print("sorrow");
