@@ -24,15 +24,14 @@
 
 //settings
 uint32 timerFactor = 100;
-//uint32 sleepyInterval = 5 * timerFactor;
-//uint32 previousMillis = 0;
 uint32 idleSoundBaseIntervall = 50 * timerFactor;
 uint32 idleSoundRandomIntervall = 100  * timerFactor;
+float32 maximalGravityVectorDifference = -50.0f;
 
 uint32 timeOfLastIdleSound = millis();
+uint32 idleSoundIntervall = idleSoundBaseIntervall;
 bool wasHangingDown = false;
-
-
+sensors_event_t initialGravityEvent;
 
 Adafruit_VS1053_FilePlayer filePlayer = Adafruit_VS1053_FilePlayer(Adafruit_VS1053_RESET, Adafruit_VS1053_CS, Adafruit_VS1053_DCS, Adafruit_VS1053_DREQ, Adafruit_CARDCS);
 Adafruit_BNO055 bno055 = Adafruit_BNO055(55);
@@ -40,6 +39,10 @@ Adafruit_BNO055 bno055 = Adafruit_BNO055(55);
 // the setup function runs once when you press reset or power the board
 void setup() 
 {
+  initialGravityEvent.acceleration.x = 12345;
+  initialGravityEvent.acceleration.y = 12345;
+  initialGravityEvent.acceleration.z = 12345;
+  
   setupMusikMaker(); 
   setupBNO055(); 
 }
@@ -62,8 +65,6 @@ void setupMusikMaker()
     Serial.println(F("VS1053 found"));
   }
  
-  filePlayer.sineTest(0x44, 500); // Make a tone to indicate VS1053 is working
-  
   if(!SD.begin(Adafruit_CARDCS)) 
   {
     Serial.println(F("SD failed, or not present"));
@@ -88,9 +89,6 @@ void setupMusikMaker()
   // Play a file in the background, REQUIRES interrupts!
   Serial.println(F("Playing WakeupTrack"));
   filePlayer.playFullFile("/wakeup.mp3");
-
-  Serial.println(F("Playing track 002"));
-  filePlayer.startPlayingFile("/track002.mp3");  
 }
 
 void setupBNO055() 
@@ -102,6 +100,7 @@ void setupBNO055()
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    filePlayer.sineTest(0x44, 500); 
     while(1);
   }
   
@@ -109,16 +108,62 @@ void setupBNO055()
   bno055.setExtCrystalUse(true);
 }
 
+float vectorLengthSquared(float vector[3])
+{
+    return vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2];
+}
+
+float vectorLength(float vec[3])
+{
+    return sqrt(vectorLengthSquared(vec));
+}
+
+float dotProduct(float vector0[3], float vector1[3])
+{
+    return vector0[0]*vector1[0] + vector0[1]*vector1[1] + vector0[2]*vector1[2];
+}
+
 bool isHangingDown()
 {
-  sensors_event_t event; 
-  bno055.getEvent(&event);
-
-  if(event.orientation.x > 200)
+  if(initialGravityEvent.acceleration.x == 0.0 || initialGravityEvent.acceleration.x == 12345)
   {
-    return true;   
+    Serial.print("taking gravity snapshot");
+    bno055.getEvent(&initialGravityEvent, Adafruit_BNO055::VECTOR_GRAVITY);
   }
-  return false;
+   
+  sensors_event_t gravityEvent;
+  bno055.getEvent(&gravityEvent, Adafruit_BNO055::VECTOR_GRAVITY);
+  
+  float gravity[3];
+  gravity[0] = gravityEvent.acceleration.x;
+  gravity[1] = gravityEvent.acceleration.y;
+  gravity[2] = gravityEvent.acceleration.z;
+  
+  float initialGravity[3];
+  initialGravity[0] = initialGravityEvent.acceleration.x;
+  initialGravity[1] = initialGravityEvent.acceleration.y;
+  initialGravity[2] = initialGravityEvent.acceleration.z;
+
+  float dot = dotProduct(gravity, initialGravity); 
+  bool hangingDown = dot < maximalGravityVectorDifference;
+
+  Serial.print(" initialGx=");
+  Serial.print(initialGravityEvent.acceleration.x);
+  Serial.print(" initialGy=");
+  Serial.print(initialGravityEvent.acceleration.y);
+  Serial.print(" initialGz=");
+  Serial.print(initialGravityEvent.acceleration.z);
+  Serial.print(" gx=");
+  Serial.print(gravityEvent.acceleration.x);
+  Serial.print(" gy=");
+  Serial.print(gravityEvent.acceleration.y);
+  Serial.print(" gz=");
+  Serial.print(gravityEvent.acceleration.z);
+  Serial.print(" dot=");
+  Serial.print(dot); 
+  Serial.print("\n");
+
+  return hangingDown;  
 }
 
 bool playIdleSound()
@@ -127,6 +172,22 @@ bool playIdleSound()
   {
     Serial.println(F("time to idle"));
     if(isHangingDown())
+    {
+      int32 randomIndex = random(0, 2);
+      if(randomIndex == 0)
+      {
+        filePlayer.playFullFile("/sorrow.mp3");
+      }
+      if(randomIndex == 1)
+      {
+        filePlayer.playFullFile("/vomit.mp3");
+      }
+      if(randomIndex == 2)
+      {
+        filePlayer.playFullFile("/sick.mp3");
+      }
+    }
+    else
     {
       int32 randomIndex = random(0, 2);
       if(randomIndex == 0)
@@ -142,23 +203,7 @@ bool playIdleSound()
         filePlayer.playFullFile("/snore.mp3");
       }
     }
-    else
-    {
-      int32 randomIndex = random(0, 2);
-      if(randomIndex == 0)
-      {
-        filePlayer.playFullFile("/sorrow.mp3");
-      }
-      if(randomIndex == 1)
-      {
-        filePlayer.playFullFile("/vomit.mp3");
-      }
-      if(randomIndex == 2)
-      {
-        filePlayer.playFullFile("/snore.mp3");
-      }
-    }
-    idleSoundIntervall = idleSooundBaseIntervall + random(0, idleSoundRandomIntervall)
+    idleSoundIntervall = idleSoundBaseIntervall + random(0, idleSoundRandomIntervall);
     timeOfLastIdleSound = millis();
   }
 }
@@ -171,7 +216,7 @@ void loop()
     if(wasHangingDown == false)
     {
       Serial.println(F("dumb bird down"));
-      filePlayer.playFullFile("/hit.mp3");   
+      //filePlayer.playFullFile("/hit.mp3");   
       filePlayer.playFullFile("/shreek.mp3");  
       timeOfLastIdleSound = millis(); 
     }
@@ -188,63 +233,7 @@ void loop()
   wasHangingDown = isHangingDown();
   playIdleSound();
     
- /* Get a new sensor event 
-  sensors_event_t event; 
-  bno055.getEvent(&event);*/
-  
-  // Display the floating point data 
-  Serial.print("X: ");
-  Serial.print(event.orientation.x, 4);
-  Serial.print("\tY: ");
-  Serial.print(event.orientation.y, 4);
-  Serial.print("\tZ: ");
-  Serial.print(event.orientation.z, 4);
-  Serial.println("");
-/*
-  if(event.orientation.x > 200)
-  {
-    Serial.print("sorrow");
-    filePlayer.startPlayingFile("/sorrow.mp3");    
-  }
-
-  if(event.orientation.y > 50)
-  {
-    Serial.print("hit");
-    filePlayer.startPlayingFile("/hit.mp3");    
-  }
-  */
-  //delay(100);
-
-
-  /*Serial.print(".");
-  // File is playing in the background
-  if (musicPlayer.stopped()) {
-    Serial.println("Done playing music");
-    while (1) {
-      delay(10);  // we're done! do nothing...
-    }
-  }
-  if (Serial.available()) {
-    char c = Serial.read();
-    
-    // if we get an 's' on the serial console, stop!
-    if (c == 's') {
-      musicPlayer.stopPlaying();
-    }
-    
-    // if we get an 'p' on the serial console, pause/unpause!
-    if (c == 'p') {
-      if (! musicPlayer.paused()) {
-        Serial.println("Paused");
-        musicPlayer.pausePlaying(true);
-      } else { 
-        Serial.println("Resumed");
-        musicPlayer.pausePlaying(false);
-      }
-    }
-  }
-  delay(100);
-  */           
+  delay(500);    
 }
 
 void printDirectory(File directory, uint8 coutOfTabs) 
