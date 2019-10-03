@@ -43,8 +43,8 @@ void setup()
   initialGravityEvent.acceleration.y = 12345;
   initialGravityEvent.acceleration.z = 12345;
   
+  setupBNO055();  
   setupMusikMaker(); 
-  setupBNO055(); 
 }
 
 void setupMusikMaker()
@@ -127,8 +127,9 @@ bool isHangingDown()
 {
   if(initialGravityEvent.acceleration.x == 0.0 || initialGravityEvent.acceleration.x == 12345)
   {
-    Serial.print("taking gravity snapshot");
+    Serial.print("taking gravity snapshot ...");
     bno055.getEvent(&initialGravityEvent, Adafruit_BNO055::VECTOR_GRAVITY);
+    Serial.print("done\n");
   }
    
   sensors_event_t gravityEvent;
@@ -211,6 +212,8 @@ bool playIdleSound()
 // the loop function runs over and over again forever
 void loop() 
 {
+  Serial.println("loop");
+  digitalWrite(13, HIGH);  
   if(isHangingDown())
   {
     if(wasHangingDown == false)
@@ -232,7 +235,8 @@ void loop()
   }
   wasHangingDown = isHangingDown();
   playIdleSound();
-    
+
+  digitalWrite(13, LOW);    
   delay(500);    
 }
 
@@ -256,7 +260,8 @@ void printDirectory(File directory, uint8 coutOfTabs)
      {
        Serial.println("/");
        printDirectory(entry, coutOfTabs+1);
-     } else 
+     } 
+     else 
      {
        // files have sizes, directories do not
        Serial.print("\t\t");
